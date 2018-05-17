@@ -203,6 +203,10 @@ public class Num2Word {
 
 }
 
+/***************************************************************************************************************************************
+ * Database name is test, table name is test with columns id int auto_increment, value decimal(12,2)...put some test values in the table
+ ***************************************************************************************************************************************/
+
 
 /******************************************************************************
  * The SQL Function for converting to word....works only up to 6 digits value, 
