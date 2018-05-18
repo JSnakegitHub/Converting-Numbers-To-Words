@@ -1,308 +1,490 @@
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
 
-public class Num2Word {
-
-	private static Connection conn;
-	private static ResultSet result;
-
-	public static void main(String[] args) {
-
-		Num2Word num2Word = new Num2Word();
-		num2Word.getNumbersBeforeDecimalPointAndTranslateThem();
-
-	}
-
-	private int valueAfterDP;
-	private int answerRight;
-	private String valueAfterDecimalInWord;
-	ArrayList<String> allTheIDs = new ArrayList<>();
-	private String convertedToWord;
-
-	public void getNumbersBeforeDecimalPointAndTranslateThem() {
-
-		/***************************************************************************************************************
-		 * Because I need to return the conversion to word for every id that will be found in
-		 * the database table, I will grab all the ids and pass them in an array and use
-		 * advanced for-loop to convert for each id
-		 ***************************************************************************************************************/
-		String sqlForGettingID = "SELECT id from test";
-
-		try {
-
-			conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/test?autoReconnect=true&useSSL=false",
-					"root", "mysql");
-			PreparedStatement pst = conn.prepareStatement(sqlForGettingID);
-			result = pst.executeQuery();
-
-			while (result.next()) {
-				String id = result.getString(1);
-
-				allTheIDs.add(id);
-
-			}
-
-			System.out.println("Available Ids are: " + allTheIDs);
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			if (conn == null) {
-				try {
-					conn.close();
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-
-		/**************************************************
-		 * Now The for loop, so that I convert for each id
-		 **************************************************/
-		for (String ids : allTheIDs) {
-
-			/********************************************************************************
-			 * My Function is called N2W_Converter1() as shown below in the database Function
-			 * Am rounding the values to 2 decimal places because cents are only from 0-99
-			 ********************************************************************************/
-			String sql = "SELECT id,ROUND(value,2),(select N2W_Converter1((SELECT ROUND(value,2) from test where id=" + ids
-					+ "))) As Inword from test where id=" + ids + "";
-
-			try {
-
-				conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/test?autoReconnect=true&useSSL=false",
-						"root", "mysql");
-				PreparedStatement pst = conn.prepareStatement(sql);
-				result = pst.executeQuery();
-
-				/**************************************************
-				 * Am using if, coz am targeting one id at a time
-				 **************************************************/
-				if (result.next()) {
-
-					int id = result.getInt(1);
-
-					String theValueItself = result.getString(2);//Calling the value itself
-
-					String valueBeforeDecimalInWord = result.getString(3);
-
-					/********************************************************
-					 * The procedure prcoN2W_2() which is down this page,
-					 * is going to grab the digits behind decimal point; 
-					 * for a specific id
-					 ********************************************************/
-					
-					answerRight = getNumbersAfterDecimalPointAndReturnTheNumbers(
-							"call procN2W_2((" + theValueItself + "))");//Here, if we had not called the value, we would need to call it using the ids
-
-					/*******************************************
-					 * If there is no cent...for example $125.0
-					 *******************************************/
-					if (getDigitAfterDecimalPointAndTranslateThem().equals(" ")
-							|| getDigitAfterDecimalPointAndTranslateThem() == null
-							|| getDigitAfterDecimalPointAndTranslateThem().isEmpty()) {
-						
-						 convertedToWord = valueBeforeDecimalInWord + " dollars";
-					}else {
-						
-						/********************************************************
-						 * If there is cent...for example $125.05   ...5 cents
-						 ********************************************************/
-						 convertedToWord = valueBeforeDecimalInWord + " dollars and "
-								+ getDigitAfterDecimalPointAndTranslateThem() + " cents";
-					}
-
-					
-
-					System.out.println(id + ", " + theValueItself + ", " + convertedToWord);
-				}
-
-			} catch (Exception e) {
-				e.printStackTrace();
-			} finally {
-				if (conn == null) {
-					try {
-						conn.close();
-					} catch (SQLException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-
-		}
-	}
-
-	public String getDigitAfterDecimalPointAndTranslateThem() {
-
-		/**************************************************************************
-		 * We are converting the digits that were extracted after the decimal point
-		 **************************************************************************/
-		String sql = "select N2W_Converter1(" + answerRight + ")";
-
-		try {
-
-			conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/test?autoReconnect=true&useSSL=false",
-					"root", "mysql");
-			PreparedStatement pst = conn.prepareStatement(sql);
-			result = pst.executeQuery();
-
-			while (result.next()) {
-				valueAfterDecimalInWord = result.getString(1);
-			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			if (conn == null) {
-				try {
-					conn.close();
-				} catch (SQLException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		}
-		return valueAfterDecimalInWord;
-
-	}
-
-	public int getNumbersAfterDecimalPointAndReturnTheNumbers(String sql) {
-		
-		/*********************************************************************
-		 * Here we want the digits after the decimal point, in form of integer
-		 *********************************************************************/
-		
-		try {
-
-			conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/test?autoReconnect=true&useSSL=false",
-					"root", "mysql");
-			PreparedStatement pst = conn.prepareCall(sql);
-			result = pst.executeQuery();
-
-			while (result.next()) {
-				valueAfterDP = result.getInt(1);
-			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			if (conn == null) {
-				try {
-					conn.close();
-				} catch (SQLException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		}
-		return valueAfterDP;
-	}
-
-}
 
 /***************************************************************************************************************************************
- * Database name is test, table name is test with columns id int auto_increment, value decimal(12,2)...put some test values in the table
+ * So Basically I resorted to using three functions to accomplish this task. 
+ * ---One function called `to_string_left` 
+ *   -converts all the digits before decimal point to words. 
+ * ---The next function called `to_string_right` converts the digits
+ *   -after decimal point to word. This, I had to limit its work to only 2 decimal places to handle just cents which are normally 2digits.
+ *   -So basically it rounds off every number after d.place to 2decimal places then converts it to word
+ * ---The last function called `final_string` is the one to combine the results.
+ * To test the functions:
+ *   1.   Paste the `to_string_left` function in ur database, make sure it does not throw any errors; if it does, paste again. 
+ *       -I discovered that it throws errors on pasting the first time but on repeat, it behaves as expected
+ *   2.   Paste the `to_string_right` function in ur database. Surely this should not throw any errors.
+ *   3.   Paste the `final_string` function to the database.
+ *   4.   Test it by executing the `final_strig` function as: SELECT final_string(1234567895.34)$$
  ***************************************************************************************************************************************/
 
 
-/******************************************************************************
- * The SQL Function for converting to word....works only up to 6 digits value, 
- * for example $999,999.34, To test, just paste the below function in your 
- * database...then type select to_string(34678.23)$$
- * Integers work up to 8 digits, floats work up to 6 digits 
- * Decimal values work accurately for 5 digits,begins to deviate from around 250,000$
+/*********************************************************************************
+ * The SQL Function for converting the left values to word..works up to 24 digits,
+ * but my computer can't allow input beyond 1 Billion, but I extended the function 
+ * to accommodate up to 24 digit before the decimal points, and I am not very sure 
+ * about the naming of the amounts after trillion. I just placed any how
  ******************************************************************************/
 /*
 	DELIMITER $$
-	DROP FUNCTION IF EXISTS to_string$$
-	CREATE FUNCTION `to_string`(n FLOAT) RETURNS varchar(1000)
-
+	DROP FUNCTION IF EXISTS to_string_left$$
+	CREATE FUNCTION `to_string_left`(n VARCHAR(1000)) RETURNS varchar(1000)
 	
-
 	 BEGIN
-	    declare ans varchar(200);
-	    declare ansright varchar(200);
-	    declare finalanswer varchar(200);
-	    declare leftValue int;
-	    declare rightValue int; 
-	    declare dig1, dig2, dig3,dig4,dig5,dig6,dig7,dig8,dig9,dig1right,dig2right,dig3right int;
+	    declare ans varchar(500);
+	    declare ansright varchar(500);
+	    declare finalanswer varchar(500);
+	    declare leftValue int(200);
+	    declare rightValue FLOAT; 
+	    declare dig1, dig2, dig3,dig4,dig5,dig6,dig7,dig8,dig9,dig10,dig11,dig12,dig13,dig14,dig15,
+            dig16,dig17,dig18,dig19,dig20,dig21,dig22,dig23,dig24 int(200);
 
 	set ans = '';
-	set ansright = '';
-	set finalanswer = '';
 
+	select TRUNCATE(n,0) INTO leftValue;
+	
+            set dig24 = floor(leftValue/100000000000000000000000);
+            set dig23 = floor(leftValue/10000000000000000000000) -dig12*10;
+	        set dig22 = floor(leftValue/1000000000000000000000)  -(floor(leftValue/10000000000000000000000)*10);
+	        set dig21 =  floor(leftValue/100000000000000000000)  -(floor(leftValue/1000000000000000000000)*10);
+	        set dig20 =  floor(leftValue/10000000000000000000)   -(floor(leftValue/100000000000000000000)*10);
+	        set dig19 =  floor(leftValue/1000000000000000000)    -(floor(leftValue/10000000000000000000)*10);
+	        set dig18 =  floor(leftValue/100000000000000000)     -(floor(leftValue/1000000000000000000)*10);
+	        set dig17 =  floor(leftValue/10000000000000000)      -(floor(leftValue/100000000000000000)*10);
+	        set dig16 =  floor(leftValue/1000000000000000)       -(floor(leftValue/10000000000000000)*10);
+            set dig15 =  floor(leftValue/100000000000000)        -(floor(leftValue/1000000000000000)*10);
+	        set dig14 =  floor(leftValue/10000000000000)         -(floor(leftValue/100000000000000)*10);
+            set dig13 =  floor(leftValue/1000000000000)          -(floor(leftValue/10000000000000)*10);
+            set dig12 =  floor(leftValue/100000000000)           -(floor(leftValue/1000000000000)*10);
+            set dig11 =  floor(leftValue/10000000000)            -(floor(leftValue/100000000000)*10);
+            set dig10 =  floor(leftValue/1000000000)             -(floor(leftValue/10000000000)*10);
+            set dig9  =  floor(leftValue/100000000)              -(floor(leftValue/1000000000)*10);
+            set dig8  =  floor(leftValue/10000000)               -(floor(leftValue/100000000)*10);
+            set dig7  =  floor(leftValue/1000000)                -(floor(leftValue/10000000)*10);
+            set dig6  =  floor(leftValue/100000)                 -(floor(leftValue/1000000)*10);
+            set dig5  =  floor(leftValue/10000)                  -(floor(leftValue/100000)*10);
+            set dig4  =  floor(leftValue/1000)                   -(floor(leftValue/10000)*10);
+            set dig3  =  floor(leftValue/100)                    -(floor(leftValue/1000)*10);
+            set dig2  =  floor(leftValue/10)                     -(floor(leftValue/100)*10);
+            set dig1  =  floor(leftValue)                        -(floor(leftValue/10)*10);
+
+
+
+If dig24 > 0 then
+	 case
+		    when dig24=1 then set ans=concat(ans, 'One Hundred ');
+		    when dig24=2 then set ans=concat(ans, 'Two Hundred ');
+		    when dig24=3 then set ans=concat(ans, 'Three Hundred ');
+		    when dig24=4 then set ans=concat(ans, 'Four Hundred ');
+		    when dig24=5 then set ans=concat(ans, 'Five Hundred ');
+		    when dig24=6 then set ans=concat(ans, 'Six Hundred ');
+		    when dig24=7 then set ans=concat(ans, 'Seven Hundred ');
+		    when dig24=8 then set ans=concat(ans, 'Eight Hundred ');
+		    when dig24=9 then set ans=concat(ans, 'Nine Hundred ');
+		    else set ans = ans;
+		end case;
+		 if ans <> '' and dig23 =0 and dig22 = 0 then
+		    set ans=concat(ans, ' Octillion');
+		end if;
+	    end if;
+	    if ans <> '' and dig23 = 0 and dig22 >0 then
+		set ans=concat(ans, ' ');
+	    end if;
+	    if dig23 = 1 then
+		case
+		    when (dig23*10 + dig22) = 10 then set ans=concat(ans,'Ten Octillion ');
+		    when (dig23*10 + dig22) = 11 then set ans=concat(ans,'Eleven Octillion ');
+		    when (dig23*10 + dig22) = 12 then set ans=concat(ans,'Twelve Octillion ');
+		    when (dig23*10 + dig22) = 13 then set ans=concat(ans,'Thirteen Octillion ');
+		    when (dig23*10 + dig22) = 14 then set ans=concat(ans,'Fourteen Octillion ');
+		    when (dig23*10 + dig22) = 15 then set ans=concat(ans,'Fifteen Octillion ');
+		    when (dig23*10 + dig22) = 16 then set ans=concat(ans,'Sixteen Octillion ');
+		    when (dig23*10 + dig22) = 17 then set ans=concat(ans,'Seventeen Octillion ');
+		    when (dig23*10 + dig22) = 18 then set ans=concat(ans,'Eighteen Octillion ');
+		    when (dig23*10 + dig22) = 19 then set ans=concat(ans,'Nineteen Octillion ');
+		    else set ans=ans;
+		end case;
+	    else
+		if dig23 > 0 then
+		    case
+		        when dig23=2 then set ans=concat(ans, ' Twenty ');
+		        when dig23=3 then set ans=concat(ans, ' Thirty ');
+		        when dig23=4 then set ans=concat(ans, ' Fourty ');
+		        when dig23=5 then set ans=concat(ans, ' Fifty ');
+		        when dig23=6 then set ans=concat(ans, ' Sixty ');
+		        when dig23=7 then set ans=concat(ans, ' Seventy ');
+		        when dig23=8 then set ans=concat(ans, ' Eighty ');
+		        when dig23=9 then set ans=concat(ans, ' Ninety ');
+		        else set ans=ans;
+		    end case;
+		    if ans <> '' and dig22 =0 then
+		    set ans=concat(ans, ' Octillion');
+		    end if;
+		end if;
+		if ans <> '' and dig22 > 0 and dig23 =0 then
+		set ans=concat(ans, ' ');
+		end if;
+		if dig22 > 0 then
+		case
+		    when dig22=1 then set ans=concat(ans, 'One Octillion ');
+		    when dig22=2 then set ans=concat(ans, 'Two Octillion ');
+		    when dig22=3 then set ans=concat(ans, 'Three Octillion ');
+		    when dig22=4 then set ans=concat(ans, 'Four Octillion ');
+		    when dig22=5 then set ans=concat(ans, 'Five Octillion ');
+		    when dig22=6 then set ans=concat(ans, 'Six Octillion ');
+		    when dig22=7 then set ans=concat(ans, 'Seven Octillion ');
+		    when dig22=8 then set ans=concat(ans, 'Eight Octillion ');
+		    when dig22=9 then set ans=concat(ans, 'Nine Octillion ');
+		    else set ans = ans;
+		end case;
+	    end if;
+	end if;
+	    if ans <> '' and dig21 > 0 then
+		set ans=concat(ans, ' ');
+	    end if;
+
+
+
+If dig21 > 0 then
+	 case
+		    when dig21=1 then set ans=concat(ans, 'One Hundred ');
+		    when dig21=2 then set ans=concat(ans, 'Two Hundred ');
+		    when dig21=3 then set ans=concat(ans, 'Three Hundred ');
+		    when dig21=4 then set ans=concat(ans, 'Four Hundred ');
+		    when dig21=5 then set ans=concat(ans, 'Five Hundred ');
+		    when dig21=6 then set ans=concat(ans, 'Six Hundred ');
+		    when dig21=7 then set ans=concat(ans, 'Seven Hundred ');
+		    when dig21=8 then set ans=concat(ans, 'Eight Hundred ');
+		    when dig21=9 then set ans=concat(ans, 'Nine Hundred ');
+		    else set ans = ans;
+		end case;
+		 if ans <> '' and dig20 =0 and dig19 = 0 then
+		    set ans=concat(ans, ' Decillion');
+		end if;
+	    end if;
+	    if ans <> '' and dig20 = 0 and dig19 >0 then
+		set ans=concat(ans, ' ');
+	    end if;
+	    if dig20 = 1 then
+		case
+		    when (dig20*10 + dig19) = 10 then set ans=concat(ans,'Ten Decillion ');
+		    when (dig20*10 + dig19) = 11 then set ans=concat(ans,'Eleven Decillion ');
+		    when (dig20*10 + dig19) = 12 then set ans=concat(ans,'Twelve Decillion ');
+		    when (dig20*10 + dig19) = 13 then set ans=concat(ans,'Thirteen Decillion ');
+		    when (dig20*10 + dig19) = 14 then set ans=concat(ans,'Fourteen Decillion ');
+		    when (dig20*10 + dig19) = 15 then set ans=concat(ans,'Fifteen Decillion ');
+		    when (dig20*10 + dig19) = 16 then set ans=concat(ans,'Sixteen Decillion ');
+		    when (dig20*10 + dig19) = 17 then set ans=concat(ans,'Seventeen Decillion ');
+		    when (dig20*10 + dig19) = 18 then set ans=concat(ans,'Eighteen Decillion ');
+		    when (dig20*10 + dig19) = 19 then set ans=concat(ans,'Nineteen Decillion ');
+		    else set ans=ans;
+		end case;
+	    else
+		if dig20 > 0 then
+		    case
+		        when dig20=2 then set ans=concat(ans, ' Twenty ');
+		        when dig20=3 then set ans=concat(ans, ' Thirty ');
+		        when dig20=4 then set ans=concat(ans, ' Fourty ');
+		        when dig20=5 then set ans=concat(ans, ' Fifty ');
+		        when dig20=6 then set ans=concat(ans, ' Sixty ');
+		        when dig20=7 then set ans=concat(ans, ' Seventy ');
+		        when dig20=8 then set ans=concat(ans, ' Eighty ');
+		        when dig20=9 then set ans=concat(ans, ' Ninety ');
+		        else set ans=ans;
+		    end case;
+		    if ans <> '' and dig19 =0 then
+		    set ans=concat(ans, ' Decillion');
+		    end if;
+		end if;
+		if ans <> '' and dig19 > 0 and dig20 =0 then
+		set ans=concat(ans, ' ');
+		end if;
+		if dig19 > 0 then
+		case
+		    when dig19=1 then set ans=concat(ans, 'One Decillion ');
+		    when dig19=2 then set ans=concat(ans, 'Two Decillion ');
+		    when dig19=3 then set ans=concat(ans, 'Three Decillion ');
+		    when dig19=4 then set ans=concat(ans, 'Four Decillion ');
+		    when dig19=5 then set ans=concat(ans, 'Five Decillion ');
+		    when dig19=6 then set ans=concat(ans, 'Six Decillion ');
+		    when dig19=7 then set ans=concat(ans, 'Seven Decillion ');
+		    when dig19=8 then set ans=concat(ans, 'Eight Decillion ');
+		    when dig19=9 then set ans=concat(ans, 'Nine Decillion ');
+		    else set ans = ans;
+		end case;
+	    end if;
+	end if;
+	    if ans <> '' and dig18 > 0 then
+		set ans=concat(ans, ' ');
+	    end if;
+
+
+If dig18 > 0 then
+	 case
+		    when dig18=1 then set ans=concat(ans, 'One Hundred ');
+		    when dig18=2 then set ans=concat(ans, 'Two Hundred ');
+		    when dig18=3 then set ans=concat(ans, 'Three Hundred ');
+		    when dig18=4 then set ans=concat(ans, 'Four Hundred ');
+		    when dig18=5 then set ans=concat(ans, 'Five Hundred ');
+		    when dig18=6 then set ans=concat(ans, 'Six Hundred ');
+		    when dig18=7 then set ans=concat(ans, 'Seven Hundred ');
+		    when dig18=8 then set ans=concat(ans, 'Eight Hundred ');
+		    when dig18=9 then set ans=concat(ans, 'Nine Hundred ');
+		    else set ans = ans;
+		end case;
+		 if ans <> '' and dig17 =0 and dig16 = 0 then
+		    set ans=concat(ans, ' Quintillion');
+		end if;
+	    end if;
+	    if ans <> '' and dig17 = 0 and dig16 >0 then
+		set ans=concat(ans, ' ');
+	    end if;
+	    if dig17 = 1 then
+		case
+		    when (dig17*10 + dig16) = 10 then set ans=concat(ans,'Ten Quintillion ');
+		    when (dig17*10 + dig16) = 11 then set ans=concat(ans,'Eleven Quintillion ');
+		    when (dig17*10 + dig16) = 12 then set ans=concat(ans,'Twelve Quintillion ');
+		    when (dig17*10 + dig16) = 13 then set ans=concat(ans,'Thirteen Quintillion ');
+		    when (dig17*10 + dig16) = 14 then set ans=concat(ans,'Fourteen Quintillion ');
+		    when (dig17*10 + dig16) = 15 then set ans=concat(ans,'Fifteen Quintillion ');
+		    when (dig17*10 + dig16) = 16 then set ans=concat(ans,'Sixteen Quintillion ');
+		    when (dig17*10 + dig16) = 17 then set ans=concat(ans,'Seventeen Quintillion ');
+		    when (dig17*10 + dig16) = 18 then set ans=concat(ans,'Eighteen Quintillion ');
+		    when (dig17*10 + dig16) = 19 then set ans=concat(ans,'Nineteen Quintillion ');
+		    else set ans=ans;
+		end case;
+	    else
+		if dig17 > 0 then
+		    case
+		        when dig17=2 then set ans=concat(ans, ' Twenty ');
+		        when dig17=3 then set ans=concat(ans, ' Thirty ');
+		        when dig17=4 then set ans=concat(ans, ' Fourty ');
+		        when dig17=5 then set ans=concat(ans, ' Fifty ');
+		        when dig17=6 then set ans=concat(ans, ' Sixty ');
+		        when dig17=7 then set ans=concat(ans, ' Seventy ');
+		        when dig17=8 then set ans=concat(ans, ' Eighty ');
+		        when dig17=9 then set ans=concat(ans, ' Ninety ');
+		        else set ans=ans;
+		    end case;
+		    if ans <> '' and dig16 =0 then
+		    set ans=concat(ans, ' Quintillion');
+		    end if;
+		end if;
+		if ans <> '' and dig16 > 0 and dig17 =0 then
+		set ans=concat(ans, ' ');
+		end if;
+		if dig16 > 0 then
+		case
+		    when dig16=1 then set ans=concat(ans, 'One Quintillion ');
+		    when dig16=2 then set ans=concat(ans, 'Two Quintillion ');
+		    when dig16=3 then set ans=concat(ans, 'Three Quintillion ');
+		    when dig16=4 then set ans=concat(ans, 'Four Quintillion ');
+		    when dig16=5 then set ans=concat(ans, 'Five Quintillion ');
+		    when dig16=6 then set ans=concat(ans, 'Six Quintillion ');
+		    when dig16=7 then set ans=concat(ans, 'Seven Quintillion ');
+		    when dig16=8 then set ans=concat(ans, 'Eight Quintillion ');
+		    when dig16=9 then set ans=concat(ans, 'Nine Quintillion ');
+		    else set ans = ans;
+		end case;
+	    end if;
+	end if;
+	    if ans <> '' and dig15 > 0 then
+		set ans=concat(ans, ' ');
+	    end if;
 	    
 
-
-
-	select substring(format( n %1,2),3,2) INTO rightValue;
-	select TRUNCATE(n,0) INTO leftValue;
-
-	    set dig9 = floor(leftValue/100000000);
-	    set dig8 = floor(leftValue/10000000) - dig9*10;
-	    set dig7 = floor(leftValue/1000000) -(floor(leftValue/10000000)*10);
-	    set dig6 = floor(leftValue/100000) - (floor(leftValue/1000000)*10);
-	    set dig5 = floor(leftValue/10000) -  (floor(leftValue/100000)*10);
-	    set dig4 = floor(leftValue/1000) -   (floor(leftValue/10000)*10);
-	    set dig3 = floor(leftValue/100) -    (floor(leftValue/1000)*10);
-	    set dig2 = floor(leftValue/10) -     (floor(leftValue/100)*10);
-	    set dig1 = leftValue - (floor(leftValue / 10)*10);
-
-
-
-	    set dig3right = floor(rightValue/100) - (floor(rightValue/1000)*10);
-	    set dig2right = floor(rightValue/10) - (floor(rightValue/100)*10);
-	    set dig1right = rightValue - (floor(rightValue / 10)*10);
-
-
-	If dig9 > 0 then
+If dig15 > 0 then
 	 case
-		    when dig9=1 then set ans=concat(ans, 'One Hundred');
-		    when dig9=2 then set ans=concat(ans, 'Two Hundred');
-		    when dig9=3 then set ans=concat(ans, 'Three Hundred');
-		    when dig9=4 then set ans=concat(ans, 'Four Hundred');
-		    when dig9=5 then set ans=concat(ans, 'Five Hundred');
-		    when dig9=6 then set ans=concat(ans, 'Six Hundred');
-		    when dig9=7 then set ans=concat(ans, 'Seven Hundred');
-		    when dig9=8 then set ans=concat(ans, 'Eight Hundred');
-		    when dig9=9 then set ans=concat(ans, 'Nine Hundred');
+		    when dig15=1 then set ans=concat(ans, 'One Hundred ');
+		    when dig15=2 then set ans=concat(ans, 'Two Hundred ');
+		    when dig15=3 then set ans=concat(ans, 'Three Hundred ');
+		    when dig15=4 then set ans=concat(ans, 'Four Hundred ');
+		    when dig15=5 then set ans=concat(ans, 'Five Hundred ');
+		    when dig15=6 then set ans=concat(ans, 'Six Hundred ');
+		    when dig15=7 then set ans=concat(ans, 'Seven Hundred ');
+		    when dig15=8 then set ans=concat(ans, 'Eight Hundred ');
+		    when dig15=9 then set ans=concat(ans, 'Nine Hundred ');
+		    else set ans = ans;
+		end case;
+		 if ans <> '' and dig14 =0 and dig13 = 0 then
+		    set ans=concat(ans, ' Trillion');
+		end if;
+	    end if;
+	    if ans <> '' and dig14 = 0 and dig13 >0 then
+		set ans=concat(ans, '');
+	    end if;
+	    if dig14 = 1 then
+		case
+		    when (dig14*10 + dig13) = 10 then set ans=concat(ans,'Ten Trillion ');
+		    when (dig14*10 + dig13) = 11 then set ans=concat(ans,'Eleven Trillion ');
+		    when (dig14*10 + dig13) = 12 then set ans=concat(ans,'Twelve Trillion ');
+		    when (dig14*10 + dig13) = 13 then set ans=concat(ans,'Thirteen Trillion ');
+		    when (dig14*10 + dig13) = 14 then set ans=concat(ans,'Fourteen Trillion ');
+		    when (dig14*10 + dig13) = 15 then set ans=concat(ans,'Fifteen Trillion ');
+		    when (dig14*10 + dig13) = 16 then set ans=concat(ans,'Sixteen Trillion ');
+		    when (dig14*10 + dig13) = 17 then set ans=concat(ans,'Seventeen Trillion ');
+		    when (dig14*10 + dig13) = 18 then set ans=concat(ans,'Eighteen Trillion ');
+		    when (dig14*10 + dig13) = 19 then set ans=concat(ans,'Nineteen Trillion ');
+		    else set ans=ans;
+		end case;
+	    else
+		if dig14 > 0 then
+		    case
+		        when dig14=2 then set ans=concat(ans, ' Twenty ');
+		        when dig14=3 then set ans=concat(ans, ' Thirty ');
+		        when dig14=4 then set ans=concat(ans, ' Fourty ');
+		        when dig14=5 then set ans=concat(ans, ' Fifty ');
+		        when dig14=6 then set ans=concat(ans, ' Sixty ');
+		        when dig14=7 then set ans=concat(ans, ' Seventy ');
+		        when dig14=8 then set ans=concat(ans, ' Eighty ');
+		        when dig14=9 then set ans=concat(ans, ' Ninety ');
+		        else set ans=ans;
+		    end case;
+		    if ans <> '' and dig13 =0 then
+		    set ans=concat(ans, ' Trillion');
+		    end if;
+		end if;
+		if ans <> '' and dig13 > 0 and dig14 =0 then
+		set ans=concat(ans, '');
+		end if;
+		if dig13 > 0 then
+		case
+		    when dig13=1 then set ans=concat(ans, 'One Trillion ');
+		    when dig13=2 then set ans=concat(ans, 'Two Trillion ');
+		    when dig13=3 then set ans=concat(ans, 'Three Trillion ');
+		    when dig13=4 then set ans=concat(ans, 'Four Trillion ');
+		    when dig13=5 then set ans=concat(ans, 'Five Trillion ');
+		    when dig13=6 then set ans=concat(ans, 'Six Trillion ');
+		    when dig13=7 then set ans=concat(ans, 'Seven Trillion ');
+		    when dig13=8 then set ans=concat(ans, 'Eight Trillion ');
+		    when dig13=9 then set ans=concat(ans, 'Nine Trillion ');
+		    else set ans = ans;
+		end case;
+	    end if;
+	end if;
+	    if ans <> '' and dig12 > 0 then
+		set ans=concat(ans, '');
+	    end if;
+	    
+
+	If dig12 > 0 then
+	 case
+		    when dig12=1 then set ans=concat(ans, 'One Hundred ');
+		    when dig12=2 then set ans=concat(ans, 'Two Hundred ');
+		    when dig12=3 then set ans=concat(ans, 'Three Hundred ');
+		    when dig12=4 then set ans=concat(ans, 'Four Hundred ');
+		    when dig12=5 then set ans=concat(ans, 'Five Hundred ');
+		    when dig12=6 then set ans=concat(ans, 'Six Hundred ');
+		    when dig12=7 then set ans=concat(ans, 'Seven Hundred ');
+		    when dig12=8 then set ans=concat(ans, 'Eight Hundred ');
+		    when dig12=9 then set ans=concat(ans, 'Nine Hundred ');
+		    else set ans = ans;
+		end case;
+		 if ans <> '' and dig11 =0 and dig10 = 0 then
+		    set ans=concat(ans, ' Billion');
+		end if;
+	    end if;
+	    if ans <> '' and dig11 = 0 and dig10 >0 then
+		set ans=concat(ans, ' ');
+	    end if;
+	    if dig11 = 1 then
+		case
+		    when (dig11*10 + dig10) = 10 then set ans=concat(ans,'Ten Billion ');
+		    when (dig11*10 + dig10) = 11 then set ans=concat(ans,'Eleven Billion ');
+		    when (dig11*10 + dig10) = 12 then set ans=concat(ans,'Twelve Billion ');
+		    when (dig11*10 + dig10) = 13 then set ans=concat(ans,'Thirteen Billion ');
+		    when (dig11*10 + dig10) = 14 then set ans=concat(ans,'Fourteen Billion ');
+		    when (dig11*10 + dig10) = 15 then set ans=concat(ans,'Fifteen Billion ');
+		    when (dig11*10 + dig10) = 16 then set ans=concat(ans,'Sixteen Billion ');
+		    when (dig11*10 + dig10) = 17 then set ans=concat(ans,'Seventeen Billion ');
+		    when (dig11*10 + dig10) = 18 then set ans=concat(ans,'Eighteen Billion ');
+		    when (dig11*10 + dig10) = 19 then set ans=concat(ans,'Nineteen Billion ');
+		    else set ans=ans;
+		end case;
+	    else
+		if dig11 > 0 then
+		    case
+		        when dig11=2 then set ans=concat(ans, ' Twenty ');
+		        when dig11=3 then set ans=concat(ans, ' Thirty ');
+		        when dig11=4 then set ans=concat(ans, ' Fourty ');
+		        when dig11=5 then set ans=concat(ans, ' Fifty ');
+		        when dig11=6 then set ans=concat(ans, ' Sixty ');
+		        when dig11=7 then set ans=concat(ans, ' Seventy ');
+		        when dig11=8 then set ans=concat(ans, ' Eighty ');
+		        when dig11=9 then set ans=concat(ans, ' Ninety ');
+		        else set ans=ans;
+		    end case;
+		    if ans <> '' and dig10 =0 then
+		    set ans=concat(ans, ' Billion');
+		    end if;
+		end if;
+		if ans <> '' and dig10 > 0 and dig11 =0 then
+		set ans=concat(ans, ' ');
+		end if;
+		if dig10 > 0 then
+		case
+		    when dig10=1 then set ans=concat(ans, 'One Billion ');
+		    when dig10=2 then set ans=concat(ans, 'Two Billion ');
+		    when dig10=3 then set ans=concat(ans, 'Three Billion ');
+		    when dig10=4 then set ans=concat(ans, 'Four Billion ');
+		    when dig10=5 then set ans=concat(ans, 'Five Billion ');
+		    when dig10=6 then set ans=concat(ans, 'Six Billion ');
+		    when dig10=7 then set ans=concat(ans, 'Seven Billion ');
+		    when dig10=8 then set ans=concat(ans, 'Eight Billion ');
+		    when dig10=9 then set ans=concat(ans, 'Nine Billion ');
+		    else set ans = ans;
+		end case;
+	    end if;
+	end if;
+	
+	
+	    if ans <> '' and dig9 > 0 then
+		set ans=concat(ans, ' ');
+	    end if;
+	    
+	    If dig9 > 0 then
+	 case
+		    when dig9=1 then set ans=concat(ans, 'One Hundred ');
+		    when dig9=2 then set ans=concat(ans, 'Two Hundred ');
+		    when dig9=3 then set ans=concat(ans, 'Three Hundred ');
+		    when dig9=4 then set ans=concat(ans, 'Four Hundred ');
+		    when dig9=5 then set ans=concat(ans, 'Five Hundred ');
+		    when dig9=6 then set ans=concat(ans, 'Six Hundred ');
+		    when dig9=7 then set ans=concat(ans, 'Seven Hundred ');
+		    when dig9=8 then set ans=concat(ans, 'Eight Hundred ');
+		    when dig9=9 then set ans=concat(ans, 'Nine Hundred ');
 		    else set ans = ans;
 		end case;
 		 if ans <> '' and dig8 =0 and dig7 = 0 then
 		    set ans=concat(ans, ' Million');
 		end if;
 	    end if;
-	    if ans <> '' and dig8 > 0 then
+	    if ans <> '' and dig8 = 0 then
 		set ans=concat(ans, ' ');
 	    end if;
 	    if dig8 = 1 then
 		case
-		    when (dig8*10 + dig7) = 10 then set ans=concat(ans,'Ten Million');
-		    when (dig8*10 + dig7) = 11 then set ans=concat(ans,'Eleven Million');
-		    when (dig8*10 + dig7) = 12 then set ans=concat(ans,'Twelve Million');
-		    when (dig8*10 + dig7) = 13 then set ans=concat(ans,'Thirteen Million');
-		    when (dig8*10 + dig7) = 14 then set ans=concat(ans,'Fourteen Million');
-		    when (dig8*10 + dig7) = 15 then set ans=concat(ans,'Fifteen Million');
-		    when (dig8*10 + dig7) = 16 then set ans=concat(ans,'Sixteen Million');
-		    when (dig8*10 + dig7) = 17 then set ans=concat(ans,'Seventeen Million');
-		    when (dig8*10 + dig7) = 18 then set ans=concat(ans,'Eighteen Million');
-		    when (dig8*10 + dig7) = 19 then set ans=concat(ans,'Nineteen Million');
+		    when (dig8*10 + dig7) = 10 then set ans=concat(ans,'Ten Million ');
+		    when (dig8*10 + dig7) = 11 then set ans=concat(ans,'Eleven Million ');
+		    when (dig8*10 + dig7) = 12 then set ans=concat(ans,'Twelve Million ');
+		    when (dig8*10 + dig7) = 13 then set ans=concat(ans,'Thirteen Million ');
+		    when (dig8*10 + dig7) = 14 then set ans=concat(ans,'Fourteen Million ');
+		    when (dig8*10 + dig7) = 15 then set ans=concat(ans,'Fifteen Million ');
+		    when (dig8*10 + dig7) = 16 then set ans=concat(ans,'Sixteen Million ');
+		    when (dig8*10 + dig7) = 17 then set ans=concat(ans,'Seventeen Million ');
+		    when (dig8*10 + dig7) = 18 then set ans=concat(ans,'Eighteen Million ');
+		    when (dig8*10 + dig7) = 19 then set ans=concat(ans,'Nineteen Million ');
 		    else set ans=ans;
 		end case;
 	    else
 		if dig8 > 0 then
 		    case
-		        when dig8=2 then set ans=concat(ans, 'Twenty ');
-		        when dig8=3 then set ans=concat(ans, 'Thirty ');
-		        when dig8=4 then set ans=concat(ans, 'Fourty ');
-		        when dig8=5 then set ans=concat(ans, 'Fifty ');
-		        when dig8=6 then set ans=concat(ans, 'Sixty ');
-		        when dig8=7 then set ans=concat(ans, 'Seventy ');
-		        when dig8=8 then set ans=concat(ans, 'Eighty ');
-		        when dig8=9 then set ans=concat(ans, 'Ninety ');
+		        when dig8=2 then set ans=concat(ans, ' Twenty ');
+		        when dig8=3 then set ans=concat(ans, ' Thirty ');
+		        when dig8=4 then set ans=concat(ans, ' Fourty ');
+		        when dig8=5 then set ans=concat(ans, ' Fifty ');
+		        when dig8=6 then set ans=concat(ans, ' Sixty ');
+		        when dig8=7 then set ans=concat(ans, ' Seventy ');
+		        when dig8=8 then set ans=concat(ans, ' Eighty ');
+		        when dig8=9 then set ans=concat(ans, ' Ninety ');
 		        else set ans=ans;
 		    end case;
 		    if ans <> '' and dig7 =0 then
@@ -331,6 +513,7 @@ public class Num2Word {
 		set ans=concat(ans, ' ');
 	    end if;
 
+
 	    if dig6 > 0 then
 		case
 		    when dig6=1 then set ans=concat(ans, 'One Hundred');
@@ -348,7 +531,7 @@ public class Num2Word {
 		    set ans=concat(ans, ' Thousand');
 		end if;
 	    end if;
-	    if ans <> '' and dig5 > 0 then
+	    if ans <> '' and dig5 = 0 then
 		set ans=concat(ans, ' ');
 	    end if;
 	    if dig5 = 1 then
@@ -368,14 +551,14 @@ public class Num2Word {
 	    else
 		if dig5 > 0 then
 		    case
-		        when dig5=2 then set ans=concat(ans, 'Twenty ');
-		        when dig5=3 then set ans=concat(ans, 'Thirty ');
-		        when dig5=4 then set ans=concat(ans, 'Fourty ');
-		        when dig5=5 then set ans=concat(ans, 'Fifty ');
-		        when dig5=6 then set ans=concat(ans, 'Sixty ');
-		        when dig5=7 then set ans=concat(ans, 'Seventy ');
-		        when dig5=8 then set ans=concat(ans, 'Eighty ');
-		        when dig5=9 then set ans=concat(ans, 'Ninety ');
+		        when dig5=2 then set ans=concat(ans, ' Twenty ');
+		        when dig5=3 then set ans=concat(ans, ' Thirty ');
+		        when dig5=4 then set ans=concat(ans, ' Fourty ');
+		        when dig5=5 then set ans=concat(ans, ' Fifty ');
+		        when dig5=6 then set ans=concat(ans, ' Sixty ');
+		        when dig5=7 then set ans=concat(ans, ' Seventy ');
+		        when dig5=8 then set ans=concat(ans, ' Eighty ');
+		        when dig5=9 then set ans=concat(ans, ' Ninety ');
 		        else set ans=ans;
 		    end case;
 		    if ans <> '' and dig4 =0 then
@@ -417,7 +600,7 @@ public class Num2Word {
 		    else set ans = ans;
 		end case;
 	    end if;
-	    if ans <> '' and dig2 > 0 then
+	    if ans <> '' and dig2 = 0 then
 		set ans=concat(ans, ' ');
 	    end if;
 	    if dig2 = 1 then
@@ -437,14 +620,14 @@ public class Num2Word {
 	    else
 		if dig2 > 0 then
 		    case
-		        when dig2=2 then set ans=concat(ans, 'Twenty ');
-		        when dig2=3 then set ans=concat(ans, 'Thirty ');
-		        when dig2=4 then set ans=concat(ans, 'Fourty ');
-		        when dig2=5 then set ans=concat(ans, 'Fifty ');
-		        when dig2=6 then set ans=concat(ans, 'Sixty ');
-		        when dig2=7 then set ans=concat(ans, 'Seventy ');
-		        when dig2=8 then set ans=concat(ans, 'Eighty ');
-		        when dig2=9 then set ans=concat(ans, 'Ninety ');
+		        when dig2=2 then set ans=concat(ans, ' Twenty ');
+		        when dig2=3 then set ans=concat(ans, ' Thirty ');
+		        when dig2=4 then set ans=concat(ans, ' Fourty ');
+		        when dig2=5 then set ans=concat(ans, ' Fifty ');
+		        when dig2=6 then set ans=concat(ans, ' Sixty ');
+		        when dig2=7 then set ans=concat(ans, ' Seventy ');
+		        when dig2=8 then set ans=concat(ans, ' Eighty ');
+		        when dig2=9 then set ans=concat(ans, ' Ninety ');
 		        else set ans=ans;
 		    end case;
 		end if;
@@ -466,20 +649,65 @@ public class Num2Word {
 		    end case;
 		end if;
 	    end if;
+	
+
+	set ans=concat(ans, ' dollars');
+
+
+	select trim(ans) into ans;
 
 
 
+	select concat(upper(left(ans,1)),lower(substring(ans,2))) into ans;
+
+
+	return trim(ans);
+
+	    END$$
+
+
+
+*/
+
+/**********************************************************************************************************************
+ * The SQL Function for converting the right values to word..works up to 2 digits,
+ * It rounds off every other number after decimal point to only 2 digits then converts the 2 digits to word
+ **********************************************************************************************************************/
+
+/*
+
+	DELIMITER $$
+	DROP FUNCTION IF EXISTS to_string_right$$
+	CREATE FUNCTION `to_string_right`(n VARCHAR(200)) RETURNS varchar(1000)
+
+
+
+	 BEGIN
+	    declare ansright varchar(500);
+	    declare rightValue FLOAT; 
+	    declare dig1right,dig2right,dig3right int;
+
+	set ansright = '';
+
+	select substring(format( n %1,2),3,2) INTO rightValue;
+
+
+	    set dig3right = floor(rightValue/100);
+	    set dig2right = floor(rightValue/10) - (floor(rightValue/100)*10);
+	    set dig1right = rightValue - (floor(rightValue / 10)*10);
+
+	
 	if dig3right > 0 then
 		case
-		    when dig3right=1 then set ansright=concat(ansright, 'one hundred');
-		    when dig3right=2 then set ansright=concat(ansright, 'two hundred');
-		    when dig3right=3 then set ansright=concat(ansright, 'three hundred');
-		    when dig3right=4 then set ansright=concat(ansright, 'four hundred');
-		    when dig3right=5 then set ansright=concat(ansright, 'five hundred');
-		    when dig3right=6 then set ansright=concat(ansright, 'six hundred');
-		    when dig3right=7 then set ansright=concat(ansright, 'seven hundred');
-		    when dig3right=8 then set ansright=concat(ansright, 'eight hundred');
-		    when dig3right=9 then set ansright=concat(ansright, 'nine hundred');
+		    when dig3right=1 then set ansright=concat(ansright, 'one hundred ');
+		    when dig3right=2 then set ansright=concat(ansright, 'two hundred ');
+		    when dig3right=3 then set ansright=concat(ansright, 'three hundred ');
+		    when dig3right=4 then set ansright=concat(ansright, 'four hundred ');
+		    when dig3right=5 then set ansright=concat(ansright, 'five hundred ');
+		    when dig3right=6 then set ansright=concat(ansright, 'six hundred ');
+		    when dig3right=7 then set ansright=concat(ansright, 'seven hundred ');
+		    when dig3right=8 then set ansright=concat(ansright, 'eight hundred ');
+		    when dig3right=9 then set ansright=concat(ansright, 'nine hundred ');
 		    else set ansright = ansright;
 		end case;
 	    end if;
@@ -501,7 +729,7 @@ public class Num2Word {
 	    else
 		if dig2right > 0 then
 		    case
-		        when dig2right=1 then set ansright=concat(ansright, 'ten');
+
 		        when dig2right=2 then set ansright=concat(ansright, 'twenty ');
 		        when dig2right=3 then set ansright=concat(ansright, 'thirty ');
 		        when dig2right=4 then set ansright=concat(ansright, 'fourty ');
@@ -532,56 +760,80 @@ public class Num2Word {
 		end if;
 	    end if;
 
-	set finalanswer=concat(ans, ' dollars');
+
+	
+
+	set ansright=concat(ansright, '');
 
 
 
-
-	case
-	 
-	when ansright is NULL or ansright='' then
-
-	set finalanswer=concat(finalanswer, '.');
-	 
-	else
-
-	set finalanswer=concat(finalanswer, ' and ');
-	set finalanswer=concat(finalanswer, ansright);
-	set finalanswer=concat(finalanswer, ' cents.');
-
-	end case;
-
-
-	select trim(finalanswer) into finalanswer;
+	select trim(ansright) into ansright;
 
 
 
-	select concat(upper(left(finalanswer,1)),lower(substring(finalanswer,2))) into finalanswer;
+	select lower(ansright) into ansright;
 
 
-	return trim(finalanswer);
+	return trim(ansright);
 
 	    END$$
 
 
-
 */
 
-/********************************************************************************************************************************
- * The SQL Stored Procedure for extracting the digits behind the decimal point. 
- * It uses SUBSTRING_INDEX, the value entering the database table should be changed 
- * to float so that the right hand side digits can be extracted well by this procedure.
- * For example if the amount is 240 it has to be changed to float so that it is 240.0 
- *********************************************************************************************************************************/
+
+
+/**********************************************************************************************************************
+ * The SQL Function for combining the right and left conversion..
+ * This is the test function. It has both the left and right digits converted values.
+ * How to test is as above
+ ***********************************************************************************************************************/
 
 /*
 
-CREATE PROCEDURE procN2W_2(n VARCHAR(200)) 
-BEGIN 
-IF (n LIKE '%[^a-zA-Z0-9]%') THEN 
-SELECT 0 FROM test; 
-ELSE 
-SELECT SUBSTRING_INDEX(n,'.',-1); 
-END IF; 
-END$$
+	DELIMITER $$
+	DROP FUNCTION IF EXISTS final_string$$
+	CREATE FUNCTION `final_string`(n varchar(1000)) RETURNS VARCHAR(5000)
+        BEGIN
+
+	declare valueLeft varchar(200);
+        declare valueRight varchar(200);
+        declare out_value varchar(200);
+
+	set valueLeft='';
+	set valueRight='';
+	set out_value='';
+
+	select to_string_left(n) into valueLeft;
+	select to_string_right(n) into valueRight;
+
+	set out_value = valueLeft;
+
+	case
+	 
+	when valueRight is NULL or valueRight='' then
+
+	set out_value=concat(out_value, '.');
+	 
+	else
+
+	set out_value=concat(out_value, ' and ');
+	set out_value=concat(out_value, valueRight);
+	set out_value=concat(out_value, ' cents.');
+
+	end case;
+
+
+	select trim(out_value) into out_value;
+
+
+
+	select concat(upper(left(out_value,1)),lower(substring(out_value,2))) into out_value;
+
+	return trim(out_value);
+	END$$
+
+
+
+
 */
