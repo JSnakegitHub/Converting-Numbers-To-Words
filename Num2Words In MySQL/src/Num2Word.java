@@ -217,9 +217,10 @@ public class Num2Word {
  ******************************************************************************/
 /*
 	DELIMITER $$
+	DROP FUNCTION IF EXISTS to_string$$
 	CREATE FUNCTION `to_string`(n FLOAT) RETURNS varchar(1000)
 
-
+	
 
 	 BEGIN
 	    declare ans varchar(200);
