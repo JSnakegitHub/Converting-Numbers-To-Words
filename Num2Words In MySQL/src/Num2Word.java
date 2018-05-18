@@ -230,9 +230,6 @@ set finalanswer = '';
 
     
 
-   
-
-
 
 
 select substring(format( n %1,2),3,2) INTO rightValue;
@@ -273,7 +270,7 @@ If dig9 > 0 then
         end if;
     end if;
     if ans <> '' and dig8 > 0 then
-        set ans=concat(ans, ' And ');
+        set ans=concat(ans, ' ');
     end if;
     if dig8 = 1 then
         case
@@ -281,7 +278,7 @@ If dig9 > 0 then
             when (dig8*10 + dig7) = 11 then set ans=concat(ans,'Eleven Million');
             when (dig8*10 + dig7) = 12 then set ans=concat(ans,'Twelve Million');
             when (dig8*10 + dig7) = 13 then set ans=concat(ans,'Thirteen Million');
-            when (dig8*10 + dig7) = 14 then set ans=concat(ans,'Fourteen Million');
+            when (dig8*10 + dig7) = 14 then set ans=concat(ans,'Forteen Million');
             when (dig8*10 + dig7) = 15 then set ans=concat(ans,'Fifteen Million');
             when (dig8*10 + dig7) = 16 then set ans=concat(ans,'Sixteen Million');
             when (dig8*10 + dig7) = 17 then set ans=concat(ans,'Seventeen Million');
@@ -294,7 +291,7 @@ If dig9 > 0 then
             case
                 when dig8=2 then set ans=concat(ans, ' Twenty');
                 when dig8=3 then set ans=concat(ans, ' Thirty');
-                when dig8=4 then set ans=concat(ans, ' Fourty');
+                when dig8=4 then set ans=concat(ans, ' Forty');
                 when dig8=5 then set ans=concat(ans, ' Fifty');
                 when dig8=6 then set ans=concat(ans, ' Sixty');
                 when dig8=7 then set ans=concat(ans, ' Seventy');
@@ -307,7 +304,7 @@ If dig9 > 0 then
             end if;
         end if;
         if ans <> '' and dig7 > 0 and dig8 =0 then
-        set ans=concat(ans, ' And ');
+        set ans=concat(ans, ' ');
         end if;
         if dig7 > 0 then
         case
@@ -325,7 +322,7 @@ If dig9 > 0 then
     end if;
 end if;
     if ans <> '' and dig6 > 0 then
-        set ans=concat(ans, ' And ');
+        set ans=concat(ans, ' ');
     end if;
 
     if dig6 > 0 then
@@ -346,7 +343,7 @@ end if;
         end if;
     end if;
     if ans <> '' and dig5 > 0 then
-        set ans=concat(ans, ' And ');
+        set ans=concat(ans, ' ');
     end if;
     if dig5 = 1 then
         case
@@ -354,7 +351,7 @@ end if;
             when (dig5*10 + dig4) = 11 then set ans=concat(ans,'Eleven Thousand');
             when (dig5*10 + dig4) = 12 then set ans=concat(ans,'Twelve Thousand');
             when (dig5*10 + dig4) = 13 then set ans=concat(ans,'Thirteen Thousand');
-            when (dig5*10 + dig4) = 14 then set ans=concat(ans,'Fourteen Thousand');
+            when (dig5*10 + dig4) = 14 then set ans=concat(ans,'Forteen Thousand');
             when (dig5*10 + dig4) = 15 then set ans=concat(ans,'Fifteen Thousand');
             when (dig5*10 + dig4) = 16 then set ans=concat(ans,'Sixteen Thousand');
             when (dig5*10 + dig4) = 17 then set ans=concat(ans,'Seventeen Thousand');
@@ -367,7 +364,7 @@ end if;
             case
                 when dig5=2 then set ans=concat(ans, ' Twenty');
                 when dig5=3 then set ans=concat(ans, ' Thirty');
-                when dig5=4 then set ans=concat(ans, ' Fourty');
+                when dig5=4 then set ans=concat(ans, ' Forty');
                 when dig5=5 then set ans=concat(ans, ' Fifty');
                 when dig5=6 then set ans=concat(ans, ' Sixty');
                 when dig5=7 then set ans=concat(ans, ' Seventy');
@@ -380,7 +377,7 @@ end if;
             end if;
         end if;
         if ans <> '' and dig4 > 0 and dig5 =0 then
-        set ans=concat(ans, ' And ');
+        set ans=concat(ans, ' ');
         end if;
         if dig4 > 0 then
         case
@@ -398,7 +395,7 @@ end if;
     end if;
 end if;
     if ans <> '' and dig3 > 0 then
-        set ans=concat(ans, ' And ');
+        set ans=concat(ans, ' ');
     end if;
     if dig3 > 0 then
         case
@@ -415,7 +412,7 @@ end if;
         end case;
     end if;
     if ans <> '' and dig2 > 0 then
-        set ans=concat(ans, ' And ');
+        set ans=concat(ans, ' ');
     end if;
     if dig2 = 1 then
         case
@@ -423,7 +420,7 @@ end if;
             when (dig2*10 + dig1) = 11 then set ans=concat(ans,'Eleven');
             when (dig2*10 + dig1) = 12 then set ans=concat(ans,'Twelve');
             when (dig2*10 + dig1) = 13 then set ans=concat(ans,'Thirteen');
-            when (dig2*10 + dig1) = 14 then set ans=concat(ans,'Fourteen');
+            when (dig2*10 + dig1) = 14 then set ans=concat(ans,'Forteen');
             when (dig2*10 + dig1) = 15 then set ans=concat(ans,'Fifteen');
             when (dig2*10 + dig1) = 16 then set ans=concat(ans,'Sixteen');
             when (dig2*10 + dig1) = 17 then set ans=concat(ans,'Seventeen');
@@ -436,7 +433,7 @@ end if;
             case
                 when dig2=2 then set ans=concat(ans, ' Twenty');
                 when dig2=3 then set ans=concat(ans, ' Thirty');
-                when dig2=4 then set ans=concat(ans, ' Fourty');
+                when dig2=4 then set ans=concat(ans, ' Forty');
                 when dig2=5 then set ans=concat(ans, ' Fifty');
                 when dig2=6 then set ans=concat(ans, ' Sixty');
                 when dig2=7 then set ans=concat(ans, ' Seventy');
@@ -446,7 +443,7 @@ end if;
             end case;
         end if;
         if ans <> '' and dig1 > 0 and dig2 =0 then
-        set ans=concat(ans, ' And ');
+        set ans=concat(ans, ' ');
         end if;
         if dig1 > 0 then
             case
@@ -542,6 +539,8 @@ end if;
 return trim(finalanswer);
 
     END$$
+
+
 
 
 */
