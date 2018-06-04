@@ -786,7 +786,7 @@ If dig15 > 0 then
 /**********************************************************************************************************************
  * The SQL Function for combining the right and left conversion..
  * This is the test function. It has both the left and right digits converted values.
- * How to test is as above
+ * How to test is as above..
  ***********************************************************************************************************************/
 
 /*
