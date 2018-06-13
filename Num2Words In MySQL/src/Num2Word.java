@@ -21,7 +21,7 @@
  * The SQL Function for converting the left values to word..works up to 24 digits,
  * but my computer can't allow input beyond 1 Billion, but I extended the function 
  * to accommodate up to 24 digit before the decimal points, and I am not very sure 
- * about the naming of the amounts after trillion. I just placed any how
+ * about the naming of the amounts after trillion. I just placed any how.
  ******************************************************************************/
 /*
 	DELIMITER $$
